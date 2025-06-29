@@ -72,7 +72,7 @@ Health check endpoint.
 
 This service is configured for deployment on Render with the following setup:
 
-1. **Build Command:** `chmod +x build.sh && ./build.sh`
+1. **Build Command:** `npm install`
 2. **Start Command:** `npm start`
 3. **Environment Variables:**
    - `NODE_ENV=production`
@@ -80,30 +80,30 @@ This service is configured for deployment on Render with the following setup:
 
 ### Build Process
 
-The build script (`build.sh`) performs the following steps:
+The build process automatically:
 1. Installs Node.js dependencies
-2. Installs Chrome for Puppeteer
-3. Sets proper permissions for the Chrome executable
+2. Installs Chrome for Puppeteer (via postinstall script)
+3. Sets up the environment for cloud deployment
 
 ### Troubleshooting
 
 If you encounter Chrome-related errors on Render:
 
 1. Check the build logs to ensure Chrome was installed successfully
-2. Verify the Chrome executable path: `/opt/render/.cache/puppeteer/chrome-linux/chrome`
-3. Check the health endpoint: `https://your-app.onrender.com/health`
-4. Review the application logs for detailed error messages
+2. Check the health endpoint: `https://your-app.onrender.com/health`
+3. Review the application logs for detailed error messages
+4. The service will automatically retry with minimal options if the initial launch fails
 
 ### Common Issues
 
 **Error: Could not find Chrome**
-- Solution: The build script should install Chrome automatically. Check build logs.
+- Solution: The postinstall script should install Chrome automatically. Check build logs.
 
-**Error: Permission denied**
-- Solution: The build script sets proper permissions. Redeploy if needed.
+**Error: Browser was not found at the configured executablePath**
+- Solution: The service now lets Puppeteer find Chrome automatically without specifying a path.
 
 **Error: Timeout**
-- Solution: The service includes proper timeouts and error handling.
+- Solution: The service includes proper timeouts and error handling with fallback options.
 
 ## Environment Variables
 

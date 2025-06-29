@@ -22,24 +22,6 @@ app.get("/health", (req, res) => {
     });
 });
 
-// Helper function to find Chrome executable
-const findChromeExecutable = () => {
-    const possiblePaths = [
-        "/opt/render/.cache/puppeteer/chrome-linux/chrome",
-        "/usr/bin/google-chrome",
-        "/usr/bin/chromium-browser",
-        "/usr/bin/chromium",
-        "/snap/bin/chromium"
-    ];
-    
-    // For now, return the Render path if we're on Render
-    if (process.env.RENDER) {
-        return "/opt/render/.cache/puppeteer/chrome-linux/chrome";
-    }
-    
-    return null; // Let Puppeteer find it automatically
-};
-
 app.post("/generate-invoice", async (req, res) => {
     let browser;
     try {
@@ -47,7 +29,7 @@ app.post("/generate-invoice", async (req, res) => {
         const invoiceData = req.body;
         const html = renderInvoiceHTML(invoiceData);
 
-        // Configure Puppeteer for Render deployment
+        // Configure Puppeteer for cloud deployment
         const launchOptions = {
             headless: "new",
             args: [
@@ -60,22 +42,34 @@ app.post("/generate-invoice", async (req, res) => {
                 "--single-process",
                 "--disable-gpu",
                 "--disable-web-security",
-                "--disable-features=VizDisplayCompositor"
+                "--disable-features=VizDisplayCompositor",
+                "--disable-extensions",
+                "--disable-plugins",
+                "--disable-images",
+                "--disable-javascript",
+                "--disable-background-timer-throttling",
+                "--disable-backgrounding-occluded-windows",
+                "--disable-renderer-backgrounding"
             ]
         };
 
-        // Set Chrome executable path if available
-        const chromePath = findChromeExecutable();
-        if (chromePath) {
-            launchOptions.executablePath = chromePath;
-            console.log("Using Chrome executable path:", chromePath);
-        } else {
-            console.log("Using default Chrome executable path");
-        }
-
         console.log("Launching browser with options:", launchOptions);
-        browser = await puppeteer.launch(launchOptions);
-        console.log("Browser launched successfully");
+        
+        try {
+            browser = await puppeteer.launch(launchOptions);
+            console.log("Browser launched successfully");
+        } catch (launchError) {
+            console.error("Failed to launch browser:", launchError.message);
+            
+            // Try with minimal options
+            console.log("Retrying with minimal options...");
+            const minimalOptions = {
+                headless: "new",
+                args: ["--no-sandbox", "--disable-setuid-sandbox"]
+            };
+            browser = await puppeteer.launch(minimalOptions);
+            console.log("Browser launched successfully with minimal options");
+        }
 
         const page = await browser.newPage();
         console.log("New page created");
