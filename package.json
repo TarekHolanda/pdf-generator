@@ -6,8 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/server.js",
-    "build": "echo 'No build step required'",
-    "postinstall": "npx puppeteer browsers install chrome"
+    "build": "npm install && npx puppeteer browsers install chrome",
+    "postinstall": "echo 'Postinstall completed'"
   },
   "keywords": [],
   "author": "",
