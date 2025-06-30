@@ -14,9 +14,25 @@ const PORT = process.env.PORT || 3001;
 let chromeInstallationChecked = false;
 
 app.use(cors({
-    origin: process.env.DOMAIN || "http://localhost:3000"
+    origin: process.env.DOMAIN || "http://localhost:3000",
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Content-Disposition"],
+    credentials: true
 }));
 app.use(bodyParser.json());
+
+// Handle CORS preflight requests
+app.options("*", (req, res) => {
+    res.set({
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Expose-Headers": "Content-Disposition",
+        "Access-Control-Max-Age": "86400"
+    });
+    res.status(200).end();
+});
 
 // Function to install Chrome at runtime if needed
 const ensureChromeInstalled = async () => {
@@ -217,8 +233,12 @@ app.post("/generate-invoice", async (req, res) => {
     let browser;
     try {
         console.log("Received invoice generation request");
+        console.log("Request headers:", req.headers);
+        console.log("Request body size:", JSON.stringify(req.body).length, "bytes");
+        
         const invoiceData = req.body;
         const html = renderInvoiceHTML(invoiceData);
+        console.log("Generated HTML size:", html.length, "characters");
 
         console.log("Launching browser with multiple strategies...");
         browser = await launchBrowser();
@@ -257,12 +277,32 @@ app.post("/generate-invoice", async (req, res) => {
         });
 
         console.log("PDF generated successfully, size:", pdfBuffer.length, "bytes");
+        console.log("PDF buffer type:", typeof pdfBuffer);
+        console.log("PDF buffer is Buffer:", Buffer.isBuffer(pdfBuffer));
 
-        res.set({
+        // Set comprehensive headers for PDF response
+        const headers = {
             "Content-Type": "application/pdf",
-            "Content-Disposition": "inline; filename=invoice.pdf"
-        });
-        res.send(pdfBuffer);
+            "Content-Disposition": "inline; filename=invoice.pdf",
+            "Content-Length": pdfBuffer.length.toString(),
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Expose-Headers": "Content-Disposition"
+        };
+
+        res.set(headers);
+
+        console.log("Sending PDF response with headers:", headers);
+        console.log("Response status before sending:", res.statusCode);
+
+        // Send the PDF buffer
+        res.end(pdfBuffer);
+        
+        console.log("PDF response sent successfully");
 
     } catch (error) {
         console.error("Error generating PDF:", error);
@@ -281,6 +321,58 @@ app.post("/generate-invoice", async (req, res) => {
                 console.error("Error closing browser:", closeError);
             }
         }
+    }
+});
+
+// Test endpoint to verify PDF response handling
+app.get("/test-pdf", async (req, res) => {
+    try {
+        console.log("Testing PDF generation and response...");
+        
+        const browser = await launchBrowser();
+        const page = await browser.newPage();
+        
+        // Create a simple test HTML
+        const testHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    h1 { color: #333; }
+                    p { color: #666; }
+                </style>
+            </head>
+            <body>
+                <h1>Test PDF Generation</h1>
+                <p>This is a test PDF generated at ${new Date().toISOString()}</p>
+                <p>If you can see this, PDF generation is working correctly!</p>
+            </body>
+            </html>
+        `;
+        
+        await page.setContent(testHtml);
+        const pdfBuffer = await page.pdf({
+            format: "A4",
+            printBackground: true
+        });
+        
+        await browser.close();
+        
+        console.log("Test PDF generated, size:", pdfBuffer.length, "bytes");
+        
+        res.set({
+            "Content-Type": "application/pdf",
+            "Content-Disposition": "inline; filename=test.pdf",
+            "Content-Length": pdfBuffer.length.toString(),
+            "Cache-Control": "no-cache"
+        });
+        
+        res.end(pdfBuffer);
+        
+    } catch (error) {
+        console.error("Test PDF generation failed:", error);
+        res.status(500).json({ error: error.message });
     }
 });
 
