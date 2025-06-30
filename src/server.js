@@ -10,10 +10,81 @@ import path from "path";
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Global variable to track Chrome installation status
+let chromeInstallationChecked = false;
+
 app.use(cors({
     origin: process.env.DOMAIN || "http://localhost:3000"
 }));
 app.use(bodyParser.json());
+
+// Function to install Chrome at runtime if needed
+const ensureChromeInstalled = async () => {
+    // Only check once per server instance
+    if (chromeInstallationChecked) {
+        console.log("Chrome installation already checked, skipping...");
+        return;
+    }
+    
+    try {
+        console.log("Checking if Chrome is installed...");
+        
+        // Check if Puppeteer cache exists
+        const cachePath = "/opt/render/.cache/puppeteer";
+        if (!fs.existsSync(cachePath)) {
+            console.log("Puppeteer cache not found, installing Chrome...");
+            try {
+                // Try multiple installation approaches
+                const installCommands = [
+                    "npx puppeteer browsers install chrome",
+                    "PUPPETEER_CACHE_DIR=/opt/render/.cache/puppeteer npx puppeteer browsers install chrome",
+                    "npx puppeteer browsers install chrome --path /opt/render/.cache/puppeteer"
+                ];
+                
+                let installed = false;
+                for (const command of installCommands) {
+                    try {
+                        console.log(`Trying: ${command}`);
+                        execSync(command, { 
+                            stdio: "inherit",
+                            timeout: 120000 // 2 minutes timeout
+                        });
+                        console.log("✅ Chrome installed successfully");
+                        installed = true;
+                        break;
+                    } catch (cmdError) {
+                        console.log(`❌ Command failed: ${command}`, cmdError.message);
+                        continue;
+                    }
+                }
+                
+                if (!installed) {
+                    throw new Error("All Chrome installation commands failed");
+                }
+            } catch (installError) {
+                console.error("❌ Failed to install Chrome:", installError.message);
+                throw installError;
+            }
+        } else {
+            console.log("✅ Puppeteer cache exists");
+        }
+        
+        // Verify installation
+        try {
+            const browsers = execSync("npx puppeteer browsers list", { encoding: "utf8" });
+            console.log("Installed browsers:", browsers);
+        } catch (e) {
+            console.log("Could not list browsers:", e.message);
+        }
+        
+        chromeInstallationChecked = true;
+        
+    } catch (error) {
+        console.error("Error ensuring Chrome installation:", error);
+        chromeInstallationChecked = true; // Mark as checked even if failed
+        throw error;
+    }
+};
 
 // Health check endpoint
 app.get("/health", (req, res) => {
@@ -59,8 +130,11 @@ app.get("/health", (req, res) => {
 
 // Helper function to launch browser with multiple fallback strategies
 const launchBrowser = async () => {
+    // First, ensure Chrome is installed
+    await ensureChromeInstalled();
+    
     const strategies = [
-        // Strategy 1: Default Puppeteer launch
+        // Strategy 1: Default Puppeteer launch (let it find Chrome automatically)
         {
             name: "Default Puppeteer",
             options: {
@@ -94,21 +168,11 @@ const launchBrowser = async () => {
                 args: ["--no-sandbox", "--disable-setuid-sandbox"]
             }
         },
-        // Strategy 3: Try with specific executable path
+        // Strategy 3: Try to find Chrome in common locations
         {
-            name: "With Executable Path",
+            name: "Find Chrome",
             options: {
                 headless: "new",
-                executablePath: "/opt/render/.cache/puppeteer/chrome-linux/chrome",
-                args: ["--no-sandbox", "--disable-setuid-sandbox"]
-            }
-        },
-        // Strategy 4: Try with system Chrome
-        {
-            name: "System Chrome",
-            options: {
-                headless: "new",
-                executablePath: "/usr/bin/google-chrome",
                 args: ["--no-sandbox", "--disable-setuid-sandbox"]
             }
         }
@@ -117,6 +181,26 @@ const launchBrowser = async () => {
     for (const strategy of strategies) {
         try {
             console.log(`Trying strategy: ${strategy.name}`);
+            
+            // For strategy 3, try to find Chrome executable
+            if (strategy.name === "Find Chrome") {
+                const possiblePaths = [
+                    "/opt/render/.cache/puppeteer/chrome-linux/chrome",
+                    "/opt/render/.cache/puppeteer/chrome/chrome",
+                    "/usr/bin/google-chrome",
+                    "/usr/bin/chromium-browser",
+                    "/usr/bin/chromium"
+                ];
+                
+                for (const chromePath of possiblePaths) {
+                    if (fs.existsSync(chromePath)) {
+                        console.log(`Found Chrome at: ${chromePath}`);
+                        strategy.options.executablePath = chromePath;
+                        break;
+                    }
+                }
+            }
+            
             const browser = await puppeteer.launch(strategy.options);
             console.log(`✅ Browser launched successfully with strategy: ${strategy.name}`);
             return browser;
@@ -200,6 +284,16 @@ app.post("/generate-invoice", async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`PDF Generator is running on http://localhost:${PORT}`);
+    
+    // Try to ensure Chrome is installed on startup
+    if (process.env.RENDER) {
+        console.log("Running on Render, checking Chrome installation on startup...");
+        try {
+            await ensureChromeInstalled();
+        } catch (error) {
+            console.log("Chrome installation check failed on startup, will retry on first request:", error.message);
+        }
+    }
 });
