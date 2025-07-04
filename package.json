@@ -1,18 +1,34 @@
 {
-  "name": "hc-pdf-generator",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
-  "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "puppeteer": "^24.11.1"
-  }
+    "name": "@tarekholanda/hc-pdf-generator",
+    "version": "1.0.0",
+    "private": true,
+    "description": "HC PDF Generator",
+    "publishConfig": {
+        "registry": "https://npm.pkg.github.com"
+    },
+    "keywords": [],
+    "homepage": "https://github.com/TarekHolanda/pdf-generator#readme",
+    "bugs": {
+        "url": "https://github.com/TarekHolanda/pdf-generator/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/TarekHolanda/pdf-generator.git"
+    },
+    "license": "ISC",
+    "author": "Tárek Holanda",
+    "type": "module",
+    "main": "index.js",
+    "bin": {
+        "hc-pdf-generator": "index.js"
+    },
+    "scripts": {
+        "start": "node index.js"
+    },
+    "dependencies": {
+        "puppeteer": "^24.11.1",
+        "handlebars": "^4.7.8",
+        "fs-extra": "^11.2.0"
+    },
+    "devDependencies": {}
 }
