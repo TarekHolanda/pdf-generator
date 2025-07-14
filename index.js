@@ -22,11 +22,23 @@ export async function generatePDF(data) {
             "--no-first-run",
             "--no-zygote",
             "--single-process",
-            "--disable-gpu"
+            "--disable-gpu",
+            "--disable-web-security",
+            "--disable-features=VizDisplayCompositor"
         ]
     });
 
     const page = await browser.newPage();
+
+    // Disable network requests to prevent timeouts
+    await page.setRequestInterception(true);
+    page.on("request", (request) => {
+        if (request.resourceType() === "image") {
+            request.abort();
+        } else {
+            request.continue();
+        }
+    });
 
     await page.setViewport({
         width: 1200,
@@ -35,11 +47,11 @@ export async function generatePDF(data) {
     });
 
     await page.setContent(html, {
-        waitUntil: ["networkidle0", "domcontentloaded"],
-        timeout: 30000
+        waitUntil: ["domcontentloaded"],
+        timeout: 60000
     });
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     const pdfBuffer = await page.pdf({
         format: "A4",
