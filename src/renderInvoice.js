@@ -1,3 +1,5 @@
+import { getLogo } from "./imageAssets.js";
+
 const formatCurrency = (value) => {
     return new Intl.NumberFormat("en-US", {
         style: "currency",
@@ -123,6 +125,9 @@ const generateInvoiceData = (invoiceData) => {
 const generateInvoiceHTMLContent = (invoiceData, invoiceDataCalculated) => {
     const { formattedDate, formattedExpirationDate, formattedSubscriptionDate, invoiceNumber, oneTimeTotal, monthlyTotal, annualTotal, total } = invoiceDataCalculated;
 
+    // Get logo from image assets
+    const logoBase64 = getLogo();
+
     const SERVICES = {
         "deployment_fee": {
             "name": "2025 Set-Up & Deployment Fee",
@@ -159,7 +164,7 @@ const generateInvoiceHTMLContent = (invoiceData, invoiceDataCalculated) => {
             <div class="header-content">
                 <div class="company-info">
                     <div class="logo">
-                        <img src="https://utils.heavyconnect.com/logos/icon-black.png" alt="HeavyConnect Logo">
+                        <img src="${logoBase64}" alt="HeavyConnect Logo">
                     </div>
                     <div class="company-details">
                         <p>HeavyConnect Inc.</p>
