@@ -1,165 +1,212 @@
 import { getLogo } from "./imageAssets.js";
 
 const formatCurrency = (value) => {
-    return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }).format(value);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
 };
 
 const convertUrlsToLinks = (text) => {
-    if (!text) return "";
-    
-    // URL regex pattern to match http/https URLs
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    
-    return text.replace(urlRegex, (url) => {
-        const urlWithoutProtocol = url.replace("https://", "");
-        return `<a href="${url}" target="_blank">${urlWithoutProtocol}</a>`; 
-    });
+  if (!text) return "";
+
+  // URL regex pattern to match http/https URLs
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+  return text.replace(urlRegex, (url) => {
+    const urlWithoutProtocol = url.replace("https://", "");
+    return `<a href="${url}" target="_blank">${urlWithoutProtocol}</a>`;
+  });
 };
 
 const calculateInvoiceTotals = (invoiceData) => {
-    const analytics = invoiceData.free_analytics ? 0 : invoiceData.mrr_analytics || 0;
-    const deploymentFee = invoiceData.deployment_fee || 0;
-    
-    const userPrice = invoiceData.user_price || 0;
-    const activeUsers = invoiceData.active_users_avg || 0;
+  const analytics = invoiceData.free_analytics
+    ? 0
+    : invoiceData.mrr_analytics || 0;
+  const deploymentFee = invoiceData.deployment_fee || 0;
 
-    const employeePrice = invoiceData.employee_price || 0;
-    const employeesTracked = invoiceData.employees_tracked_avg || 0;
-    
-    const annualInvoice = invoiceData.annual_invoice || false;
-    const usersTotal = invoiceData.bill_by_user ? userPrice * activeUsers : 0;
-    const employeesTotal = invoiceData.bill_by_employee ? employeePrice * employeesTracked : 0;
-    
-    // Calculate custom services total
-    const customServicesTotal = invoiceData.custom_services.reduce((total, service) => {
-        const serviceTotal = (service.price || 0) * (service.amount || 1);
-        let multiplier = 1;
-        
-        if (annualInvoice && service.term === "monthly") {
-            multiplier = 12;
-        }
-        
-        const finalServiceTotal = serviceTotal * multiplier;
-        
-        // If discount is true, subtract from total; if false, add to total
-        return service.discount ? total - finalServiceTotal : total + finalServiceTotal;
-    }, 0);
+  const userPrice = invoiceData.user_price || 0;
+  const activeUsers = invoiceData.active_users_avg || 0;
 
-    const oneTimeTotalFromCustomServices = invoiceData.custom_services.reduce((total, service) => {
-        const serviceTotal = (service.price || 0) * (service.amount || 1);
+  const employeePrice = invoiceData.employee_price || 0;
+  const employeesTracked = invoiceData.employees_tracked_avg || 0;
 
-        if (service.term === "monthly") {
-            return total;
-        }
+  const annualInvoice = invoiceData.annual_invoice || false;
+  const usersTotal = invoiceData.bill_by_user ? userPrice * activeUsers : 0;
+  const employeesTotal = invoiceData.bill_by_employee
+    ? employeePrice * employeesTracked
+    : 0;
 
-        return service.discount ? total - serviceTotal : total + serviceTotal;
-    }, 0);
+  // Calculate custom services total
+  const customServicesTotal = invoiceData.custom_services.reduce(
+    (total, service) => {
+      const serviceTotal = (service.price || 0) * (service.amount || 1);
+      let multiplier = 1;
 
-    const monthlyTotalFromCustomServices = invoiceData.custom_services.reduce((total, service) => {
-        const serviceTotal = (service.price || 0) * (service.amount || 1);
+      if (annualInvoice && service.term === "monthly") {
+        multiplier = 12;
+      }
 
-        if (service.term === "monthly") {
-            return service.discount ? total - serviceTotal : total + serviceTotal;
-        }
+      const finalServiceTotal = serviceTotal * multiplier;
 
+      // If discount is true, subtract from total; if false, add to total
+      return service.discount
+        ? total - finalServiceTotal
+        : total + finalServiceTotal;
+    },
+    0
+  );
+
+  const oneTimeTotalFromCustomServices = invoiceData.custom_services.reduce(
+    (total, service) => {
+      const serviceTotal = (service.price || 0) * (service.amount || 1);
+
+      if (service.term === "monthly") {
         return total;
-    }, 0);
-    
-    const oneTimeTotal = (invoiceData.deployment_fee + oneTimeTotalFromCustomServices) || 0;
-    const monthlyTotal = (usersTotal + employeesTotal + analytics + monthlyTotalFromCustomServices) || 0;
-    const annualTotal = (usersTotal + employeesTotal + analytics + monthlyTotalFromCustomServices) * 12 || 0;
-    const subTotal = usersTotal + employeesTotal + analytics;
-    const total = deploymentFee + customServicesTotal + (annualInvoice ? subTotal * 12 : subTotal);
+      }
 
-    return {
-        oneTimeTotal,
-        monthlyTotal,
-        annualTotal,
-        total,
-    };
+      return service.discount ? total - serviceTotal : total + serviceTotal;
+    },
+    0
+  );
+
+  const monthlyTotalFromCustomServices = invoiceData.custom_services.reduce(
+    (total, service) => {
+      const serviceTotal = (service.price || 0) * (service.amount || 1);
+
+      if (service.term === "monthly") {
+        return service.discount ? total - serviceTotal : total + serviceTotal;
+      }
+
+      return total;
+    },
+    0
+  );
+
+  const oneTimeTotal =
+    invoiceData.deployment_fee + oneTimeTotalFromCustomServices || 0;
+  const monthlyTotal =
+    usersTotal + employeesTotal + analytics + monthlyTotalFromCustomServices ||
+    0;
+  const annualTotal =
+    (usersTotal + employeesTotal + analytics + monthlyTotalFromCustomServices) *
+      12 || 0;
+  const subTotal = usersTotal + employeesTotal + analytics;
+  const total =
+    deploymentFee +
+    customServicesTotal +
+    (annualInvoice ? subTotal * 12 : subTotal);
+
+  return {
+    oneTimeTotal,
+    monthlyTotal,
+    annualTotal,
+    total,
+  };
 };
 
 // Shared function to generate invoice data (dates, numbers, calculations)
 const generateInvoiceData = (invoiceData) => {
-    const currentDate = new Date();
-    const formattedDate = currentDate.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric"
-    });
+  const currentDate = new Date();
+  const formattedDate = currentDate.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
-    const expirationDate = new Date(currentDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const formattedExpirationDate = expirationDate.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric"
-    });
-    
-    const subscriptionStartDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const formattedSubscriptionDate = subscriptionStartDate.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long"
-    });
+  const expirationDate = new Date(
+    currentDate.getTime() + 7 * 24 * 60 * 60 * 1000
+  );
+  const formattedExpirationDate = expirationDate.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
-    const invoiceNumber = `${currentDate.getFullYear()}${String(currentDate.getMonth() + 1).padStart(2, "0")}${String(currentDate.getDate()).padStart(2, "0")}-${invoiceData.id}`;
-    const { oneTimeTotal, monthlyTotal, annualTotal, total } = calculateInvoiceTotals(invoiceData);
+  const subscriptionStartDate = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth(),
+    1
+  );
+  const formattedSubscriptionDate = subscriptionStartDate.toLocaleDateString(
+    "en-US",
+    {
+      year: "numeric",
+      month: "long",
+    }
+  );
 
-    return {
-        formattedDate,
-        formattedExpirationDate,
-        formattedSubscriptionDate,
-        invoiceNumber,
-        oneTimeTotal,
-        monthlyTotal,
-        annualTotal,
-        total
-    };
+  const invoiceNumber = `${currentDate.getFullYear()}${String(
+    currentDate.getMonth() + 1
+  ).padStart(2, "0")}${String(currentDate.getDate()).padStart(2, "0")}-${
+    invoiceData.id
+  }`;
+  const { oneTimeTotal, monthlyTotal, annualTotal, total } =
+    calculateInvoiceTotals(invoiceData);
+
+  return {
+    formattedDate,
+    formattedExpirationDate,
+    formattedSubscriptionDate,
+    invoiceNumber,
+    oneTimeTotal,
+    monthlyTotal,
+    annualTotal,
+    total,
+  };
 };
 
 // Shared function to generate invoice HTML content
 const generateInvoiceHTMLContent = (invoiceData, invoiceDataCalculated) => {
-    const { formattedDate, formattedExpirationDate, formattedSubscriptionDate, invoiceNumber, oneTimeTotal, monthlyTotal, annualTotal, total } = invoiceDataCalculated;
+  const {
+    formattedDate,
+    formattedExpirationDate,
+    formattedSubscriptionDate,
+    invoiceNumber,
+    oneTimeTotal,
+    monthlyTotal,
+    annualTotal,
+    total,
+  } = invoiceDataCalculated;
 
-    // Get logo from image assets
-    const logoBase64 = getLogo();
+  // Get logo from image assets
+  const logoBase64 = getLogo();
 
-    const SERVICES = {
-        "deployment_fee": {
-            "name": "2025 Set-Up & Deployment Fee",
-            "description": "Account creation, set-up, deployment, and employee training fee."
-        },
-        "analytics": {
-            "name": "2025 HeavyConnect Analytics",
-            "description": "HeavyConnect Analytics module monthly subscription."
-        },
-        "binders": {
-            "name": "2025 HeavyConnect Digital Binders",
-            "description": "HeavyConnect Digital Binders module monthly subscription."
-        },
-        "timekeeper": {
-            "name": "2025 HeavyConnect TimeKeeper Pro",
-            "description": `HeavyConnect TimeKeeper module monthly subscription. Includes up to ${invoiceData.active_users_avg} users licenses.`
-        },
-        "inspector": {
-            "name": "2025 HeavyConnect Inspector Pro",
-            "description": `HeavyConnect Inspector Pro module monthly subscription. Includes up to ${invoiceData.active_users_avg} users licenses.`
-        },
-        "training": {
-            "name": "2025 HeavyConnect Training",
-            "description": `HeavyConnect Training module monthly subscription. Includes up to ${invoiceData.active_users_avg} users licenses.`
-        },
-        "selfaudit": {
-            "name": "2025 HeavyConnect Self Audit",
-            "description": `HeavyConnect Self Audit module monthly subscription. Includes up to ${invoiceData.active_users_avg} users licenses.`
-        }
-    }
-    
-    return `
+  const SERVICES = {
+    deployment_fee: {
+      name: "2025 Set-Up & Deployment Fee",
+      description:
+        "Account creation, set-up, deployment, and employee training fee.",
+    },
+    analytics: {
+      name: "2025 HeavyConnect Analytics",
+      description: "HeavyConnect Analytics module monthly subscription.",
+    },
+    binders: {
+      name: "2025 HeavyConnect Digital Binders",
+      description: "HeavyConnect Digital Binders module monthly subscription.",
+    },
+    timekeeper: {
+      name: "2025 HeavyConnect TimeKeeper Pro",
+      description: `HeavyConnect TimeKeeper module monthly subscription. Includes up to ${invoiceData.active_users_avg} users licenses.`,
+    },
+    inspector: {
+      name: "2025 HeavyConnect Inspector Pro",
+      description: `HeavyConnect Inspector Pro module monthly subscription. Includes up to ${invoiceData.active_users_avg} users licenses.`,
+    },
+    training: {
+      name: "2025 HeavyConnect Training",
+      description: `HeavyConnect Training module monthly subscription. Includes up to ${invoiceData.active_users_avg} users licenses.`,
+    },
+    selfaudit: {
+      name: "2025 HeavyConnect Self Audit",
+      description: `HeavyConnect Self Audit module monthly subscription. Includes up to ${invoiceData.active_users_avg} users licenses.`,
+    },
+  };
+
+  return `
         <div class="header">
             <div class="header-content">
                 <div class="company-info">
@@ -188,41 +235,57 @@ const generateInvoiceHTMLContent = (invoiceData, invoiceDataCalculated) => {
                 <div class="customer-row">
                     <div class="customer-label">Name:</div>
                     <div class="customer-value">
-                        ${invoiceData.signer_name ? `
+                        ${
+                          invoiceData.signer_name
+                            ? `
                             <span class="customer-input">${invoiceData.signer_name}</span>
-                        ` : `
+                        `
+                            : `
                             <span class="customer-input-border"></span>
-                        `}
+                        `
+                        }
                     </div>
                 </div>
                 <div class="customer-row">
                     <div class="customer-label">Title:</div>
                     <div class="customer-value">
-                        ${invoiceData.signer_title ? `
+                        ${
+                          invoiceData.signer_title
+                            ? `
                             <span class="customer-input">${invoiceData.signer_title}</span>
-                        ` : `
+                        `
+                            : `
                             <span class="customer-input-border"></span>
-                        `}
+                        `
+                        }
                     </div>
                 </div>
                 <div class="customer-row">
                     <div class="customer-label">Email:</div>
                     <div class="customer-value">
-                        ${invoiceData.signer_email ? `
+                        ${
+                          invoiceData.signer_email
+                            ? `
                             <span class="customer-input">${invoiceData.signer_email}</span>
-                        ` : `
+                        `
+                            : `
                             <span class="customer-input-border"></span>
-                        `}
+                        `
+                        }
                     </div>
                 </div>
                 <div class="customer-row">
                     <div class="customer-label">Phone:</div>
                     <div class="customer-value">
-                        ${invoiceData.signer_phone ? `
+                        ${
+                          invoiceData.signer_phone
+                            ? `
                             <span class="customer-input">${invoiceData.signer_phone}</span>
-                        ` : `
+                        `
+                            : `
                             <span class="customer-input-border"></span>
-                        `}
+                        `
+                        }
                     </div>
                 </div>
             </div>
@@ -240,16 +303,24 @@ const generateInvoiceHTMLContent = (invoiceData, invoiceDataCalculated) => {
                 </tr>
             </thead>
             <tbody>
-                ${invoiceData.deployment_fee > 0 ? `
+                ${
+                  invoiceData.deployment_fee > 0
+                    ? `
                 <tr>
                     <td>
-                        <div class="service-name">${SERVICES.deployment_fee.name}</div>
+                        <div class="service-name">${
+                          SERVICES.deployment_fee.name
+                        }</div>
                     </td>
                     <td>
-                        <div class="service-description">${SERVICES.deployment_fee.description}</div>
+                        <div class="service-description">${
+                          SERVICES.deployment_fee.description
+                        }</div>
                     </td>
                     <td class="text-center">
-                        <strong>${formatCurrency(invoiceData.deployment_fee)}</strong>
+                        <strong>${formatCurrency(
+                          invoiceData.deployment_fee
+                        )}</strong>
                     </td>
                     <td class="text-center">
                         <strong>1</strong>
@@ -258,21 +329,35 @@ const generateInvoiceHTMLContent = (invoiceData, invoiceDataCalculated) => {
                         <strong>One-Time</strong>
                     </td>
                     <td class="text-center">
-                        <strong>${formatCurrency(invoiceData.deployment_fee)}</strong>
+                        <strong>${formatCurrency(
+                          invoiceData.deployment_fee
+                        )}</strong>
                     </td>
                 </tr>
-                ` : ""}
+                `
+                    : ""
+                }
 
-                ${invoiceData.mrr_analytics > 0 || invoiceData.free_analytics ? `
+                ${
+                  invoiceData.mrr_analytics > 0 || invoiceData.free_analytics
+                    ? `
                 <tr>
                     <td>
-                        <div class="service-name">${SERVICES.analytics.name}</div>
+                        <div class="service-name">${
+                          SERVICES.analytics.name
+                        }</div>
                     </td>
                     <td>
-                        <div class="service-description">${SERVICES.analytics.description}</div>
+                        <div class="service-description">${
+                          SERVICES.analytics.description
+                        }</div>
                     </td>
                     <td class="text-center">
-                        <strong>${invoiceData.free_analytics ? "$0" : formatCurrency(invoiceData.mrr_analytics)}</strong>
+                        <strong>${
+                          invoiceData.free_analytics
+                            ? "$0"
+                            : formatCurrency(invoiceData.mrr_analytics)
+                        }</strong>
                     </td>
                     <td class="text-center">
                         <strong>1</strong>
@@ -281,46 +366,94 @@ const generateInvoiceHTMLContent = (invoiceData, invoiceDataCalculated) => {
                         <strong>Monthly</strong>
                     </td>
                     <td class="text-center">
-                        <strong>${invoiceData.free_analytics ? "$0" : formatCurrency(invoiceData.mrr_analytics)}</strong>
+                        <strong>${
+                          invoiceData.free_analytics
+                            ? "$0"
+                            : formatCurrency(invoiceData.mrr_analytics)
+                        }</strong>
                     </td>
                 </tr>
-                ` : ""}
+                `
+                    : ""
+                }
 
-                ${invoiceData.use_timekeeper ? `
+                ${
+                  invoiceData.use_timekeeper
+                    ? `
                 <tr>
                     <td>
-                        <div class="service-name">${SERVICES.timekeeper.name}</div>
+                        <div class="service-name">${
+                          SERVICES.timekeeper.name
+                        }</div>
                     </td>
                     <td>
-                        <div class="service-description">${SERVICES.timekeeper.description}</div>
+                        <div class="service-description">${
+                          SERVICES.timekeeper.description
+                        }</div>
                     </td>
                     <td class="text-center">
                         <strong>
-                            ${invoiceData.free_timekeeper ? "$0" : (invoiceData.bill_by_employee ? formatCurrency(invoiceData.employee_price) : formatCurrency(invoiceData.user_price))}
+                            ${
+                              invoiceData.free_timekeeper
+                                ? "$0"
+                                : invoiceData.bill_by_employee
+                                ? formatCurrency(invoiceData.employee_price)
+                                : formatCurrency(invoiceData.user_price)
+                            }
                         </strong>
                     </td>
                     <td class="text-center">
-                        <strong>${invoiceData.bill_by_employee ? invoiceData.employees_tracked_avg : invoiceData.active_users_avg}</strong>
+                        <strong>${
+                          invoiceData.bill_by_employee
+                            ? invoiceData.employees_tracked_avg
+                            : invoiceData.active_users_avg
+                        }</strong>
                     </td>
                     <td class="text-center">
                         <strong>Monthly</strong>
                     </td>
                     <td class="text-center">
-                        <strong>${invoiceData.free_timekeeper ? "$0" : (invoiceData.bill_by_employee ? formatCurrency(invoiceData.employee_price * invoiceData.employees_tracked_avg) : formatCurrency(invoiceData.user_price * invoiceData.active_users_avg))}</strong>
+                        <strong>${
+                          invoiceData.free_timekeeper
+                            ? "$0"
+                            : invoiceData.bill_by_employee
+                            ? formatCurrency(
+                                invoiceData.employee_price *
+                                  invoiceData.employees_tracked_avg
+                              )
+                            : formatCurrency(
+                                invoiceData.user_price *
+                                  invoiceData.active_users_avg
+                              )
+                        }</strong>
                     </td>
                 </tr>
-                ` : ""}
+                `
+                    : ""
+                }
 
-                ${invoiceData.use_inspector ? `
+                ${
+                  invoiceData.use_inspector
+                    ? `
                 <tr>
                     <td>
-                        <div class="service-name">${SERVICES.inspector.name}</div>
+                        <div class="service-name">${
+                          SERVICES.inspector.name
+                        }</div>
                     </td>
                     <td>
-                        <div class="service-description">${SERVICES.inspector.description}</div>
+                        <div class="service-description">${
+                          SERVICES.inspector.description
+                        }</div>
                     </td>
                     <td class="text-center">
-                        <strong>${invoiceData.free_inspector || (invoiceData.bill_by_user && invoiceData.use_timekeeper) ? "$0" : formatCurrency(invoiceData.user_price)}</strong>
+                        <strong>${
+                          invoiceData.free_inspector ||
+                          (invoiceData.bill_by_user &&
+                            invoiceData.use_timekeeper)
+                            ? "$0"
+                            : formatCurrency(invoiceData.user_price)
+                        }</strong>
                     </td>
                     <td class="text-center">
                         <strong>${invoiceData.active_users_avg}</strong>
@@ -329,12 +462,25 @@ const generateInvoiceHTMLContent = (invoiceData, invoiceDataCalculated) => {
                         <strong>Monthly</strong>
                     </td>
                     <td class="text-center">
-                        <strong>${invoiceData.free_inspector || (invoiceData.bill_by_user && invoiceData.use_timekeeper) ? "$0" : formatCurrency(invoiceData.user_price * invoiceData.active_users_avg)}</strong>
+                        <strong>${
+                          invoiceData.free_inspector ||
+                          (invoiceData.bill_by_user &&
+                            invoiceData.use_timekeeper)
+                            ? "$0"
+                            : formatCurrency(
+                                invoiceData.user_price *
+                                  invoiceData.active_users_avg
+                              )
+                        }</strong>
                     </td>
                 </tr>
-                ` : ""}
+                `
+                    : ""
+                }
 
-                ${invoiceData.use_training ? `
+                ${
+                  invoiceData.use_training
+                    ? `
                 <tr>
                     <td>
                         <div class="service-name">${SERVICES.training.name}</div>
@@ -355,9 +501,13 @@ const generateInvoiceHTMLContent = (invoiceData, invoiceDataCalculated) => {
                         <strong>$0</strong>
                     </td>
                 </tr>
-                ` : ""}
+                `
+                    : ""
+                }
 
-                ${invoiceData.use_selfaudit ? `
+                ${
+                  invoiceData.use_selfaudit
+                    ? `
                 <tr>
                     <td>
                         <div class="service-name">${SERVICES.selfaudit.name}</div>
@@ -378,14 +528,18 @@ const generateInvoiceHTMLContent = (invoiceData, invoiceDataCalculated) => {
                         <strong>$0</strong>
                     </td>
                 </tr>
-                ` : ""}
+                `
+                    : ""
+                }
 
                 <tr>
                     <td>
                         <div class="service-name">${SERVICES.binders.name}</div>
                     </td>
                     <td>
-                        <div class="service-description">${SERVICES.binders.description}</div>
+                        <div class="service-description">${
+                          SERVICES.binders.description
+                        }</div>
                     </td>
                     <td class="text-center">
                         <strong>$0</strong>
@@ -401,61 +555,103 @@ const generateInvoiceHTMLContent = (invoiceData, invoiceDataCalculated) => {
                     </td>
                 </tr>
 
-                ${invoiceData.custom_services && invoiceData.custom_services.length > 0 ? 
-                    invoiceData.custom_services.map(service => {
-                        const serviceTotal = (service.price || 0) * (service.amount || 1);
-                        const multiplier = invoiceData.annual_invoice && service.term === "monthly" ? 12 : 1;
-                        const finalServiceTotal = serviceTotal * multiplier;
-                        
-                        return `
-                        <tr class="${service.discount ? 'discount-row' : ''}">
+                ${
+                  invoiceData.custom_services &&
+                  invoiceData.custom_services.length > 0
+                    ? invoiceData.custom_services
+                        .map((service) => {
+                          const serviceTotal =
+                            (service.price || 0) * (service.amount || 1);
+                          const multiplier =
+                            invoiceData.annual_invoice &&
+                            service.term === "monthly"
+                              ? 12
+                              : 1;
+                          const finalServiceTotal = serviceTotal * multiplier;
+
+                          return `
+                        <tr class="${service.discount ? "discount-row" : ""}">
                             <td>
-                                <div class="service-name">${service.name || "Custom Service"}</div>
+                                <div class="service-name">${
+                                  service.name || "Custom Service"
+                                }</div>
                             </td>
                             <td>
-                                <div class="service-description">${service.description || "Custom Service"}</div>
+                                <div class="service-description">${
+                                  service.description || "Custom Service"
+                                }</div>
                             </td>
                             <td class="text-center">
-                                <strong>${formatCurrency(service.price || 0)}</strong>
+                                <strong>${formatCurrency(
+                                  service.price || 0
+                                )}</strong>
                             </td>
                             <td class="text-center">
                                 <strong>${service.amount || 1}</strong>
                             </td>
                             <td class="text-center">
-                                <strong>${service.term === "monthly" ? "Monthly" : service.term === "annual" ? "Annual" : "One-Time"}</strong>
+                                <strong>${
+                                  service.term === "monthly"
+                                    ? "Monthly"
+                                    : service.term === "annual"
+                                    ? "Annual"
+                                    : "One-Time"
+                                }</strong>
                             </td>
                             <td class="text-center">
-                                <strong>${service.discount ? "-" : ""}${formatCurrency(finalServiceTotal)}</strong>
+                                <strong>${
+                                  service.discount ? "-" : ""
+                                }${formatCurrency(finalServiceTotal)}</strong>
                             </td>
                         </tr>
                         `;
-                    }).join("") : ""
+                        })
+                        .join("")
+                    : ""
                 }
             </tbody>
         </table>
         
         <div class="totals-section">
             <div class="totals-container">
-                ${oneTimeTotal > 0 ? `
+                ${
+                  oneTimeTotal > 0
+                    ? `
                     <div class="total-row">
                         <span class="total-label">One-time subtotal:</span>
-                        <span class="total-value">${formatCurrency(oneTimeTotal)}</span>
+                        <span class="total-value">${formatCurrency(
+                          oneTimeTotal
+                        )}</span>
                     </div>
-                ` : ""}
+                `
+                    : ""
+                }
 
-                ${monthlyTotal > 0 ? `
+                ${
+                  monthlyTotal > 0
+                    ? `
                     <div class="total-row">
                         <span class="total-label">Monthly subtotal:</span>
-                        <span class="total-value">${formatCurrency(monthlyTotal)}</span>
+                        <span class="total-value">${formatCurrency(
+                          monthlyTotal
+                        )}</span>
                     </div>
-                ` : ""}
+                `
+                    : ""
+                }
 
-                ${annualTotal > 0 && invoiceData.annual_invoice ? `
+                ${
+                  annualTotal > 0 && invoiceData.annual_invoice
+                    ? `
                     <div class="total-row">
                         <span class="total-label">Annual subtotal:</span>
-                        <span class="total-value">${formatCurrency(annualTotal)}</span>
+                        <span class="total-value">${formatCurrency(
+                          annualTotal
+                        )}</span>
                     </div>
-                ` : ""}
+                `
+                    : ""
+                }
 
                 <div class="total-row total-final">
                     <span class="total-label">Total:</span>
@@ -552,10 +748,13 @@ const generateInvoiceHTMLContent = (invoiceData, invoiceDataCalculated) => {
 };
 
 export function renderInvoiceHTML(invoiceData) {
-    const invoiceDataCalculated = generateInvoiceData(invoiceData);
-    const htmlContent = generateInvoiceHTMLContent(invoiceData, invoiceDataCalculated);
+  const invoiceDataCalculated = generateInvoiceData(invoiceData);
+  const htmlContent = generateInvoiceHTMLContent(
+    invoiceData,
+    invoiceDataCalculated
+  );
 
-    return `
+  return `
         <!DOCTYPE html>
         <html>
             <head>
@@ -705,7 +904,7 @@ export function renderInvoiceHTML(invoiceData) {
                     }
                     
                     .services-table th {
-                        background-color: #34495e;
+                        background-color: #2a63b2;
                         color: white;
                         padding: 12px 8px;
                         text-align: center;
@@ -886,4 +1085,4 @@ export function renderInvoiceHTML(invoiceData) {
             </body>
         </html>
     `;
-};
+}
