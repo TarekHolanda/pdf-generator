@@ -6,7 +6,14 @@ Generate PDFs from JSON using Puppeteer + Handlebars. Works as a CLI tool or pro
 `node index.js test.json test-output.pdf`
 
 ## How to install on a project
+First, make sure to install the PDF Generator:
 `npm install git+https://github.com/TarekHolanda/pdf-generator.git#branch_name`
+
+Then, make sure to install the Chrome to Puppeteer:
+`npx puppeteer browsers install chrome`
+
+Then, create an Environment Variable, replacing the value below with the real path from the command above:
+`PUPPETEER_EXECUTABLE_PATH="/app/.apt/usr/bin/google-chrome"`
 
 ## How to use it with Python API
 ```
