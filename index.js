@@ -13,7 +13,7 @@ export async function generatePDF(data) {
     const html = renderInvoiceHTML(data);
 
     const browser = await puppeteer.launch({
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH ? process.env.PUPPETEER_EXECUTABLE_PATH : "/app/.apt/usr/bin/google-chrome",
+        // executablePath: process.env.PUPPETEER_EXECUTABLE_PATH ? process.env.PUPPETEER_EXECUTABLE_PATH : "/app/.apt/usr/bin/google-chrome",
         headless: "new",
         args: [
             "--no-sandbox",
@@ -25,8 +25,8 @@ export async function generatePDF(data) {
             "--single-process",
             "--disable-gpu",
             "--disable-web-security",
-            "--disable-features=VizDisplayCompositor"
-        ]
+            "--disable-features=VizDisplayCompositor",
+        ],
     });
 
     const page = await browser.newPage();
@@ -44,15 +44,15 @@ export async function generatePDF(data) {
     await page.setViewport({
         width: 1200,
         height: 800,
-        deviceScaleFactor: 1
+        deviceScaleFactor: 1,
     });
 
     await page.setContent(html, {
         waitUntil: ["domcontentloaded"],
-        timeout: 60000
+        timeout: 60000,
     });
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const pdfBuffer = await page.pdf({
         format: "A4",
@@ -61,11 +61,11 @@ export async function generatePDF(data) {
             top: "15mm",
             bottom: "15mm",
             left: "10mm",
-            right: "10mm"
+            right: "10mm",
         },
         displayHeaderFooter: false,
         preferCSSPageSize: false,
-        scale: 1.0
+        scale: 1.0,
     });
 
     await browser.close();
@@ -79,11 +79,11 @@ if (process.argv.length === 4) {
 
     const json = JSON.parse(fs.readFileSync(inputPath, "utf8"));
     generatePDF(json)
-        .then(buffer => {
+        .then((buffer) => {
             fs.writeFileSync(outputPath, buffer);
             console.log(`✅ Invoice PDF generated at ${outputPath}`);
         })
-        .catch(err => {
+        .catch((err) => {
             console.error("❌ Error generating PDF:", err);
             process.exit(1);
         });
